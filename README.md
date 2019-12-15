@@ -44,5 +44,5 @@ Para el player 2
 
 IMPORTANTE: En el segundo player tocar una tecla de jugador, luego en el primer player y el juego comenzará. 
 
-![alt text](img/game.gif) 
+![alt text](img/game.GIF) 
 
