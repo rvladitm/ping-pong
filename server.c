@@ -6,7 +6,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#define HOST "127.0.0.1"
+#define HOST "127.0.0.1" // Por efectos de comodidad se trabajo con la ip de localhost
 
 int player_count = 0;
 pthread_mutex_t mutexcount;

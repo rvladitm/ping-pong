@@ -206,14 +206,7 @@ int main(int argc, char *argv[]){
     
     */
     switch (getch()) {
-      
-      write_server_int(sockfd, b1.y);
-      int y1 = recv_int(sockfd);
-      write_server_int(sockfd, b2.y);
-      int y2 = recv_int(sockfd);
-
-
-   
+  
       case KEY_DOWN: b1.y++; break;
       case KEY_UP: b1.y--; break;
 
@@ -244,12 +237,30 @@ int main(int argc, char *argv[]){
     
     /*
     Genera las barras de cada jugador 
-
     */
     
     for(i=-1;i<=2;i++){
-      mvprintw(b1.y+i,b1.x,"|");
-      mvprintw(b2.y+i,b2.x,"|");}
+
+ 
+      /*
+      Envia y escrive las posiciones de las barras en ambos clientes  
+      */
+
+      write_server_int(sockfd, b1.y+i);
+      int y1 = recv_int(sockfd);
+      write_server_int(sockfd, b1.x);
+      int x1 = recv_int(sockfd);
+
+
+      write_server_int(sockfd, b2.y+i);
+      int y2 = recv_int(sockfd);
+      write_server_int(sockfd, b2.x);
+      int x2 = recv_int(sockfd);
+      
+      mvprintw(y1,x1,"|");
+      mvprintw(y2,x2,"|");
+      
+      }
 
     attroff(COLOR_PAIR(1));
   }
