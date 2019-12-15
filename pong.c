@@ -24,7 +24,8 @@ void error(const char *msg)
     #ifdef DEBUG
     perror(msg);
     #else
-    printf("Either the server shut down or the other player disconnected.\nGame over.\n");
+    mvprintw(5,2,"Either the server shut down or the other player disconnected."
+                  "\nGame over.\n");
     #endif 
 
     exit(0);
@@ -37,16 +38,13 @@ void error(const char *msg)
 /* Lee mensajes char del servidor. */
 void recv_msg(int sockfd, char * msg)
 {
-    /* All messages are 3 bytes. */
+    /* 3 bytes msg*/
     memset(msg, 0, 4);
     int n = read(sockfd, msg, 3);
     
-    if (n < 0 || n != 3) /* Not what we were expecting. Server got killed or the other client disconnected. */ 
-        error("ERROR reading message from server socket.");
+    if (n < 0 || n != 3) /* Servidor caido o player desconectado */ 
+        error("ERROR leyendo mensajes del servidor.");
 
-    #ifdef DEBUG
-    printf("[DEBUG] Received message: %s\n", msg);
-    #endif 
 }
 
 /* Lee mensajes int del servidor*/
@@ -56,12 +54,8 @@ int recv_int(int sockfd)
     int n = read(sockfd, &msg, sizeof(int));
     
     if (n < 0 || n != sizeof(int)) 
-        error("ERROR reading int from server socket");
-    
-    #ifdef DEBUG
-    printf("[DEBUG] Received int: %d\n", msg);
-    #endif 
-    
+        error("ERROR leyendo el servidor");
+   
     return msg;
 }
 
@@ -71,20 +65,27 @@ void write_server_int(int sockfd, int msg)
 {
     int n = write(sockfd, &msg, sizeof(int));
     if (n < 0)
-        error("ERROR writing int to server socket");
+        error("ERROR escribiendo en el servidor");
+}
+
+void write_server(int sockfd, char msg)
+{
+    int n = write(sockfd, &msg, sizeof(char));
+    if (n < 0)
+        error("ERROR escribiendo en el servidor");
 }
 
 /*
- * Connect Functions
+ * Connect 
  */
 
-/* Set up server. */
+/* Set up */
 int connect_to_server(char * hostname, int portno)
 {
     struct sockaddr_in serv_addr;
     struct hostent *server;
  
-    /* Get socket. */
+    /* socket. */
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	
     if (sockfd < 0) 
@@ -126,13 +127,6 @@ int main(int argc, char *argv[]){
   int id = recv_int(sockfd);
 
   object scr; int i = 0,cont=0; bool end=false;
-  
-  /*Espera a los dos player antes de empezar.*/
-    do {
-        recv_msg(sockfd, msg);
-        if (!strcmp(msg, "HLD"))
-            mvprintw(1,1,"Esperando al segundo jugador...\n");
-    } while ( strcmp(msg, "SRT") );
 
   initscr();
   start_color();
@@ -141,6 +135,15 @@ int main(int argc, char *argv[]){
   noecho();
   curs_set(0);
   getmaxyx(stdscr,scr.y,scr.x);
+
+  do {
+        recv_msg(sockfd, msg);
+        if (!strcmp(msg, "HLD"))
+            mvprintw(5,2,"Esperando al segundo jugador...\n");
+    }while ( strcmp(msg, "SRT") );
+      
+
+  //Estructuras  player 1, player 2 y pelota 
   object b1={scr.x-2,scr.y/2,0,false,false},
          b2={1,scr.y/2,0,false,false},
          b={scr.x/2,scr.y/2,0,false,false};
@@ -152,10 +155,9 @@ int main(int argc, char *argv[]){
 
   mvprintw(1,1,"\t ID: %i \n" 
                "\t Puerto: %s \n"
-               "\t Servidor: %s \n", id, argv[2], argv[1]);   
-  getch();
+               "\t Servidor: %s \n", id, argv[2], argv[1]); 
 
-  
+  getch();
 
   /*
   Logica de movimiento de la pelota y barras de jugadores
@@ -194,6 +196,7 @@ int main(int argc, char *argv[]){
     int pos_y = recv_int(sockfd);
     write_server_int(sockfd, b.x); 
     int pos_x = recv_int(sockfd);
+
     
     
     /*
@@ -203,9 +206,16 @@ int main(int argc, char *argv[]){
     
     */
     switch (getch()) {
+      
+      write_server_int(sockfd, b1.y);
+      int y1 = recv_int(sockfd);
+      write_server_int(sockfd, b2.y);
+      int y2 = recv_int(sockfd);
+
+
    
-      case KEY_DOWN: b1.y--; break;
-      case KEY_UP: b1.y++; break;
+      case KEY_DOWN: b1.y++; break;
+      case KEY_UP: b1.y--; break;
 
       case 'q':      b2.y--; break;
       case 'a':      b2.y++; break;
@@ -214,15 +224,25 @@ int main(int argc, char *argv[]){
 
       case 0x1B:    endwin(); end++;  close(sockfd); break; //cuanto termina, cierra el socket 
     }
+
     erase();
 
-    mvprintw(2,scr.x/2-2,"%i | %i",b1.c,b2.c); //Imprime el marcador de puntos 
+    /*Recive los puntos */
+    write_server_int(sockfd, b1.c);
+    int p1 = recv_int(sockfd);
+    write_server_int(sockfd, b2.c);
+    int p2 = recv_int(sockfd);
+
+    mvprintw(2,scr.x/2-2,"%i | %i",p1,p2); //Imprime el marcador de puntos (con socket)
+
+
     mvvline(0,scr.x/2,ACS_VLINE,scr.y); //Crea la linea central 
     attron(COLOR_PAIR(1));    
-    mvprintw(pos_y,pos_x ,"o"); //Imprime la pelota de ping pong
+    //mvprintw(b.y,b.x ,"o"); //Imprime la pelota de ping pong 
+
+    mvprintw(pos_y,pos_x ,"o"); //Imprime la pelota de ping pong (con Socket)
     
     /*
-
     Genera las barras de cada jugador 
 
     */

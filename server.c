@@ -6,6 +6,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#define HOST "127.0.0.1"
 
 int player_count = 0;
 pthread_mutex_t mutexcount;
@@ -17,49 +18,49 @@ void error(const char *msg)
 }
 
 /*
- * Socket Read Functions
+ * Socket Funciones de lectura
  */
 
-/* Reads an int from a client socket. */
+/* Lee un entero del cliente */
 int recv_int(int cli_sockfd)
 {
     int msg = 0;
     int n = read(cli_sockfd, &msg, sizeof(int));
     
-    if (n < 0 || n != sizeof(int)) /* Not what we were expecting. Client likely disconnected. */
+    if (n < 0 || n != sizeof(int)) /* disconnected. */
         return -1;
     
     return msg;
 }
 
 /*
- * Socket Write Functions
+ * Socket Funciones de escritura 
  */
 
-/* Writes a message to a client socket. */
+/* Escribe un mensaje en el cliente (char) */
 void write_client_msg(int cli_sockfd, char * msg)
 {
     int n = write(cli_sockfd, msg, strlen(msg));
     if (n < 0)
-        error("ERROR writing msg to client socket");
+        error("ERROR escribiendo en el cliente");
 }
 
-/* Writes an int to a client socket. */
+/* Escribe un mensaje en el cliente (int) */
 void write_client_int(int cli_sockfd, int msg)
 {
     int n = write(cli_sockfd, &msg, sizeof(int));
     if (n < 0)
-        error("ERROR writing int to client socket");
+        error("ERROR escribiendo en el cliente");
 }
 
-/* Writes a message to both client sockets. */
+/*Escribe un mentaje en ambos clientes (Char) */
 void write_clients_msg(int * cli_sockfd, char * msg)
 {
     write_client_msg(cli_sockfd[0], msg);
     write_client_msg(cli_sockfd[1], msg);
 }
 
-/* Writes an int to both client sockets. */
+/*Escribe un mensaje en ambos clientes (Int) */
 void write_clients_int(int * cli_sockfd, int msg)
 {
     write_client_int(cli_sockfd[0], msg);
@@ -67,10 +68,10 @@ void write_clients_int(int * cli_sockfd, int msg)
 }
 
 /*
- * Connect Functions
+ * Funciones de conexión
  */
 
-/* Sets up the listener socket. */
+/* conexión del socket  */
 int setup_listener(int portno)
 {
     int sockfd;
@@ -79,25 +80,19 @@ int setup_listener(int portno)
     /* Get a socket to listen on */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
-        error("ERROR opening listener socket.");
+        error("ERROR abriendo el socket socket.");
     
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     
 	/*server info */
     serv_addr.sin_family = AF_INET;	
-    serv_addr.sin_addr.s_addr = INADDR_ANY;	
+    serv_addr.sin_addr.s_addr = inet_addr(HOST);	
     serv_addr.sin_port = htons(portno);		
 
-    /* Bind the server info to the listener socket. */
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-        error("ERROR binding listener socket.");
+        error("ERROR listener socket.");
 
-    #ifdef DEBUG
-    printf("[DEBUG] Listener set.\n");    
-    #endif 
-
-    /* Return the socket number. */
     return sockfd;
 }
 
@@ -147,7 +142,7 @@ void get_clients(int lis_sockfd, int * cli_sockfd)
 
 int get_player_move(int cli_sockfd)
 {
-     /* Get players move. */
+     /* recive movimientos  */
     return recv_int(cli_sockfd);
 } 
 
@@ -157,26 +152,23 @@ void *run_game(void *thread_data){
     int *cli_sockfd = (int*)thread_data; /* Client sockets. */
     printf("Game on!\n");
 
-    /* Send the start message. */
-    write_clients_msg(cli_sockfd, "SRT");
-
-    #ifdef DEBUG
-    printf("[DEBUG] Sent start message.\n");
-    #endif
+    /* start message. */
+    //write_clients_msg(cli_sockfd, "SRT");
 
     int game_over = 0;
     int point_count = 0;
-    int move = 0, move2=0;
+    int move = 0;
+    int player_turn = 0;
+    int prev_player_turn = 1;
+
+
 
     while(!game_over) {
 
         //Aqui se obtiene el movimiento de la pelota y se escribe en ambos clientes 
         move = get_player_move(cli_sockfd[0]);
-        write_client_int(cli_sockfd[0], move);
-        write_client_int(cli_sockfd[1], move);
-
-
-
+        write_clients_int(cli_sockfd,move);
+                
 
 
     }
@@ -212,11 +204,13 @@ int main(int argc, char *argv[])
 
             /* obtiene dos clientes conectados */
             get_clients(lis_sockfd, cli_sockfd);
+            write_clients_msg(cli_sockfd, "SRT");
 
-            pthread_t thread; 
+            pthread_t thread;     
+            //Se genera un hilo de procesos
             int result = pthread_create(&thread, NULL, run_game, (void *)cli_sockfd);
             if (result){
-                printf("Error %d\n", result);
+                printf("Error %d\n", result); //error si no se ejecuta correctamente
                 exit(-1);
             }
         
